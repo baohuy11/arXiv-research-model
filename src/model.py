@@ -19,11 +19,11 @@ class ArxivClassifier:
         """Create the specified model with optimized hyperparameters"""
         if model_type.lower() == 'gb':
             self.model = GradientBoostingClassifier(
-                n_estimators=100,
-                learning_rate=0.1,
+                n_estimators=50,
+                learning_rate=0.2,
                 max_depth=3,
-                min_samples_split=20,
-                min_samples_leaf=10,
+                min_samples_split=5,
+                min_samples_leaf=2,
                 subsample=0.8,
                 random_state=self.random_state
             )
@@ -40,34 +40,19 @@ class ArxivClassifier:
         
         return self.pipeline
         
-    def get_param_grid(self, model_type='rf'):
+    def get_param_grid(self, model_type='gb'):
         """Get parameter grid for grid search"""
-        if model_type.lower() == 'rf':
+        if model_type.lower() == 'gb':
             return {
-                'classifier__n_estimators': [100, 200, 300],
-                'classifier__max_depth': [None, 20, 30],
-                'classifier__min_samples_split': [2, 5, 10],
-                'classifier__min_samples_leaf': [1, 2, 4],
-                'classifier__max_features': ['sqrt', 'log2']
-            }
-        elif model_type.lower() == 'dt':
-            return {
-                'classifier__max_depth': [10, 20, 30],
-                'classifier__min_samples_split': [2, 5, 10],
-                'classifier__min_samples_leaf': [1, 2, 4],
-                'classifier__criterion': ['gini', 'entropy']
-            }
-        elif model_type.lower() == 'gb':
-            return {
-                'classifier__n_estimators': [100, 200],
-                'classifier__learning_rate': [0.05, 0.1],
-                'classifier__max_depth': [3, 5],
-                'classifier__min_samples_split': [5, 10],
-                'classifier__min_samples_leaf': [2, 5],
+                'classifier__n_estimators': [30, 50],
+                'classifier__learning_rate': [0.1, 0.2],
+                'classifier__max_depth': [2, 3],
+                'classifier__min_samples_split': [2, 5],
+                'classifier__min_samples_leaf': [1, 2],
                 'classifier__subsample': [0.8, 1.0]
             }
         
-    def train(self, X_train, y_train, do_grid_search=False, model_type='rf'):
+    def train(self, X_train, y_train, do_grid_search=False, model_type='gb'):
         """Train the model with optional grid search"""
         if self.pipeline is None:
             self.create_model(model_type)

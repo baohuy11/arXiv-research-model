@@ -22,8 +22,8 @@ def main():
     # Prepare data with smaller sample size for faster processing
     print("Preparing data...")
     X_train, X_test, y_train, y_test = preprocessor.prepare_data(
-        sample_fraction=0.05,  # Use 5% of data for faster processing
-        test_size=0.2
+        sample_fraction=0.05,  # Keep small sample size
+        test_size=0.1
     )
     print(f"Training set size: {X_train.shape[0]}")
     print(f"Test set size: {X_test.shape[0]}")
@@ -31,10 +31,11 @@ def main():
     # Train and evaluate Gradient Boosting
     print("\nTraining Gradient Boosting model...")
     classifier = ArxivClassifier(preprocessor.preprocessor)
-    classifier.create_model('gb')  # Create GB model with optimized parameters for speed
+    classifier.create_model('gb')
     
-    # Train the model
-    classifier.train(X_train, y_train, do_grid_search=False)
+    # Skip cross-validation for faster execution
+    print("\nTraining model...")
+    classifier.train(X_train, y_train, do_grid_search=False)  # Skip grid search
     
     # Get predictions and evaluate
     print("\nEvaluating model...")

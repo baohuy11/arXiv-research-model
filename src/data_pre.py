@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder, OneHotEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
@@ -60,10 +60,23 @@ class DataPreprocessor:
         char_count = len(text)
         avg_word_length = char_count / (word_count + 1)  # Add 1 to avoid division by zero
         
+        # Add more text features
+        sentences = text.split('.')
+        sentence_count = len(sentences)
+        avg_sentence_length = word_count / (sentence_count + 1)
+        
+        # Count unique words
+        unique_words = len(set(text.split()))
+        lexical_diversity = unique_words / (word_count + 1)
+        
         return pd.Series({
             'word_count': word_count,
             'char_count': char_count,
-            'avg_word_length': avg_word_length
+            'avg_word_length': avg_word_length,
+            'sentence_count': sentence_count,
+            'avg_sentence_length': avg_sentence_length,
+            'unique_words': unique_words,
+            'lexical_diversity': lexical_diversity
         })
         
     def load_data(self):
@@ -71,10 +84,15 @@ class DataPreprocessor:
         print("Loading data...")
         data = pd.read_csv(self.data_path)
         
+        # Get top 10 categories
+        top_categories = data['category'].value_counts().nlargest(10).index
+        data['category_code'] = data['category'].apply(lambda x: x if x in top_categories else 'other')
+        
         # Process text data
         print("Processing text data...")
         tqdm.pandas(desc="Processing summaries")
         data['processed_summary'] = data['summary'].progress_apply(self.preprocess_text)
+        data['processed_title'] = data['title'].progress_apply(self.preprocess_text)
         
         # Extract text features
         print("Extracting text features...")
@@ -95,14 +113,6 @@ class DataPreprocessor:
         data['pub_month'] = data['published_date'].dt.month
         data['pub_year'] = data['published_date'].dt.year
         
-        # Define top categories and create category2 column
-        category_counts = data["category"].value_counts()
-        top_categories = category_counts[category_counts >= 100].index  # Only keep categories with >= 100 samples
-        
-        # Create simplified category labels
-        data["category2"] = data["category"].apply(
-            lambda x: x if x in top_categories else "other")
-            
         return data
         
     def random_sample_per_class(self, df, class_column, fraction):
@@ -111,7 +121,7 @@ class DataPreprocessor:
         
         sampled_df = df.groupby(class_column).apply(
             lambda x: x.sample(n=max(min_samples, int(len(x) * fraction)), 
-                             random_state=self.random_state, replace=len(x) < min_samples)
+                               random_state=self.random_state, replace=len(x) < min_samples)
         ).reset_index(drop=True)
         
         return sampled_df
@@ -125,22 +135,39 @@ class DataPreprocessor:
             ]
         )
 
-        text_transformer = Pipeline([
+        summary_transformer = Pipeline([
             ('tfidf', TfidfVectorizer(
-                max_features=1000,
-                min_df=10,
-                max_df=0.9,
-                ngram_range=(1, 1),
+                max_features=500,
+                min_df=5,
+                max_df=0.85,
+                ngram_range=(1, 2),
                 stop_words='english'
             ))
         ])
 
+        title_transformer = Pipeline([
+            ('tfidf', TfidfVectorizer(
+                max_features=100,
+                min_df=2,
+                max_df=0.9,
+                stop_words='english'
+            ))
+        ])
+
+        category_transformer = Pipeline([
+            ('onehot', OneHotEncoder(handle_unknown='ignore'))
+        ])
+
         preprocessor = ColumnTransformer(
             transformers=[
-                ("text", text_transformer, "processed_summary"),
+                ("summary", summary_transformer, "processed_summary"),
+                ("title", title_transformer, "processed_title"),
+                ("category", category_transformer, ["category_code"]),
                 ("num", numeric_transformer, [
                     'authors_count', 'revision_time_days', 
-                    'word_count', 'char_count', 'avg_word_length'
+                    'word_count', 'char_count', 'avg_word_length',
+                    'sentence_count', 'avg_sentence_length',
+                    'unique_words', 'lexical_diversity'
                 ]),
             ],
             remainder='drop'
@@ -149,22 +176,25 @@ class DataPreprocessor:
         self.preprocessor = preprocessor
         return preprocessor
         
-    def prepare_data(self, sample_fraction=0.1, test_size=0.2):
+    def prepare_data(self, sample_fraction=0.1, test_size=0.1):
         """Main method to prepare data for modeling"""
         # Load and preprocess data
         data = self.load_data()
         
         # Sample data
-        sampled_df = self.random_sample_per_class(data, 'category2', sample_fraction)
+        sampled_df = self.random_sample_per_class(data, 'category_code', sample_fraction)
         
         # Define features
         features = [
-            'processed_summary', 'authors_count', 'revision_time_days',
-            'word_count', 'char_count', 'avg_word_length'
+            'processed_summary', 'processed_title', 'category_code',
+            'authors_count', 'revision_time_days',
+            'word_count', 'char_count', 'avg_word_length',
+            'sentence_count', 'avg_sentence_length',
+            'unique_words', 'lexical_diversity'
         ]
         
         X = sampled_df[features]
-        y = sampled_df['category2']
+        y = sampled_df['category_code']
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
