@@ -75,10 +75,6 @@ docker run -p 8000:8000 arxiv-research-model
 - Format code: `black .`
 - Lint code: `flake8`
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Contributing
 
 1. Fork the repository
