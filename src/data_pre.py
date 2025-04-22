@@ -47,25 +47,23 @@ class DataPreprocessor:
             
             # Remove stopwords and lemmatize
             tokens = [self.lemmatizer.lemmatize(token) for token in tokens 
-                     if token not in self.stop_words]
+                     if token not in self.stop_words and len(token) > 2]  # Added length filter
             
             return ' '.join(tokens)
         except Exception as e:
             print(f"Warning: Error processing text: {str(e)}")
-            return text  # Return original text if processing fails
+            return text
         
     def extract_text_features(self, text):
         """Extract additional features from text"""
         word_count = len(text.split())
         char_count = len(text)
-        avg_word_length = char_count / (word_count + 1)  # Add 1 to avoid division by zero
+        avg_word_length = char_count / (word_count + 1)
         
-        # Add more text features
         sentences = text.split('.')
         sentence_count = len(sentences)
         avg_sentence_length = word_count / (sentence_count + 1)
         
-        # Count unique words
         unique_words = len(set(text.split()))
         lexical_diversity = unique_words / (word_count + 1)
         
@@ -137,19 +135,19 @@ class DataPreprocessor:
 
         summary_transformer = Pipeline([
             ('tfidf', TfidfVectorizer(
-                max_features=500,
-                min_df=5,
-                max_df=0.85,
-                ngram_range=(1, 2),
+                max_features=1000,  # Increased from 500
+                min_df=3,          # Decreased from 5
+                max_df=0.8,        # Decreased from 0.85
+                ngram_range=(1, 2), # Increased from (1,2)
                 stop_words='english'
             ))
         ])
 
         title_transformer = Pipeline([
             ('tfidf', TfidfVectorizer(
-                max_features=100,
+                max_features=200,   # Increased from 100
                 min_df=2,
-                max_df=0.9,
+                max_df=0.85,       # Decreased from 0.9
                 stop_words='english'
             ))
         ])

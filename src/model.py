@@ -19,12 +19,13 @@ class ArxivClassifier:
         """Create the specified model with optimized hyperparameters"""
         if model_type.lower() == 'gb':
             self.model = GradientBoostingClassifier(
-                n_estimators=50,
-                learning_rate=0.2,
-                max_depth=3,
-                min_samples_split=5,
+                n_estimators=200,        # Increased from 50
+                learning_rate=0.1,       # Decreased from 0.2
+                max_depth=5,             # Increased from 3
+                min_samples_split=4,     # Adjusted from 5
                 min_samples_leaf=2,
                 subsample=0.8,
+                max_features='sqrt',     # Added feature selection
                 random_state=self.random_state
             )
         else:
@@ -44,12 +45,13 @@ class ArxivClassifier:
         """Get parameter grid for grid search"""
         if model_type.lower() == 'gb':
             return {
-                'classifier__n_estimators': [30, 50],
-                'classifier__learning_rate': [0.1, 0.2],
-                'classifier__max_depth': [2, 3],
-                'classifier__min_samples_split': [2, 5],
-                'classifier__min_samples_leaf': [1, 2],
-                'classifier__subsample': [0.8, 1.0]
+                'classifier__n_estimators': [100, 200, 300],
+                'classifier__learning_rate': [0.05, 0.1, 0.2],
+                'classifier__max_depth': [3, 5, 7],
+                'classifier__min_samples_split': [2, 4, 6],
+                'classifier__min_samples_leaf': [1, 2, 3],
+                'classifier__subsample': [0.8, 0.9, 1.0],
+                'classifier__max_features': ['sqrt', 'log2', None]
             }
         
     def train(self, X_train, y_train, do_grid_search=False, model_type='gb'):
